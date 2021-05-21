@@ -3,8 +3,23 @@
 #
 # $1 = The system identifier from ES
 # $2 = The name of the rom file
-# $3 = The name of the game associated to the rom file
+# $3 = The name of the game associated to the rom file in ES
+# $4 = Reason for the event to be fired from ES
+#		input         - game selected via the UI
+#		novideo	      - screensaver, black or dim
+#		randomvideo   - video being played
+#		requestedgame - game selected on startup or reload * game-select only 
+#		slideshow     - slideshow
 #
+# If no game was selected, first three parameters will be text "NULL"
+#
+
+#
+# Convert test "NULL" to empty string
+#
+if [  "$1" == "NULL" ] && [  "$2" == "NULL" ] && [ "$3" == "NULL" ]; then
+	set "" "" "" "$4"
+fi
 
 # BASE URL for RESTful calls to Pixelcade
 PIXELCADEBASEURL="http://localhost:8080/"
@@ -13,18 +28,19 @@ PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
 # get the last previously selected game for the marquee
 PREVIOUSGAMESELECTED=$(cat "$PREVIOUSGAMESELECTEDFILE" 2>/dev/null)
 
-if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then 
+# file to load and save the last marquee displayed to prevent blinking
+PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
+PIXELCADESETTINGSFILE="/home/pi/pixelcade/settings.ini"
+PIXELCADEMAPPINGSFILE="/home/pi/pixelcade/console.csv"
+
+# Setting to override default behavior of the pixelcade listener. 1 - Use the system marquee if a game's marquee does not exist, 0 - Display text of the game name is a game's marquee does not exist
+CONVERTWHEELARTFORMARQUEE=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^ConvertWheelArtForMarquee[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
+USECONSOLEMARQUEEBYDEFAULT=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^UseConsoleMarqueeByDefault[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
+USECONSOLEMARQUEEFORSCREENSAVER=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^UseConsoleMarqueeForScreenSaver[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
+
+if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
 	# Function to check if an image file for a game exists. 0 = true.
 	image_file_exists() { if [ -f "$1.png" ] || [ -f "$1.gif" ]; then echo 0; fi }
-
-	# file to load and save the last marquee displayed to prevent blinking
-	PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
-	PIXELCADESETTINGSFILE="/home/pi/pixelcade/settings.ini"
-	PIXELCADEMAPPINGSFILE="/home/pi/pixelcade/console.csv"
-
-	# Setting to override default behavior of the pixelcade listener. 1 - Use the system marquee if a game's marquee does not exist, 0 - Display text of the game name is a game's marquee does not exist
-	USECONSOLEMARQUEEBYDEFAULT=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^UseConsoleMarqueeByDefault[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
-	CONVERTWHEELARTFORMARQUEE=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^ConvertWheelArtForMarquee[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
 
 	# get the mapped system, if it exists
 	MAPPEDSYSTEM=$(grep "^$1," $PIXELCADEMAPPINGSFILE | cut -d, -f2)
@@ -69,13 +85,23 @@ if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
 		fi
 	fi
 else
-	# black out the marquee
-	CURRENTGAMESELECTED="console/black/default"
-	if [ "$CURRENTGAMESELECTED" != "$PREVIOUSGAMESELECTED" ]; then
+	if [ "$USECONSOLEMARQUEEFORSCREENSAVER" == "1" ]; then
+		# choose a random console marquee to display
+		RANDOMSYSTEM="$(find /home/pi/pixelcade/console/default-*.png -type f | shuf -n 1 | sed -e 's/.*default-\(.*\).png.*/\1/')"
+		CURRENTGAMESELECTED="console/$RANDOMSYSTEM/default"
+		PIXELCADEURL="console/stream/$RANDOMSYSTEM"
+	else
+		# black out the marquee
+		CURRENTGAMESELECTED="console/black/default"
 		PIXELCADEURL="console/stream/black"
 	fi
+        if [ "$CURRENTGAMESELECTED" == "$PREVIOUSGAMESELECTED" ]; then
+		PIXELCADEURL=""
+	fi
+
 fi
 
+# Displaying a new marquee.  Set it in Pixelcade and save a token of the marquee 
 if [ "$PIXELCADEURL" != "" ]; then
 	curl --silent "$PIXELCADEBASEURL$PIXELCADEURL" >> /dev/null 2>/dev/null &
 	echo "$CURRENTGAMESELECTED" > "$PREVIOUSGAMESELECTEDFILE"
