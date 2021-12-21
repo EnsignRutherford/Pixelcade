@@ -11,7 +11,7 @@
 #
 # Configurations
 #
-PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
+PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.marquee-select"
 PREVIOUSGAMESELECTED="console/$1/default"
 
 #

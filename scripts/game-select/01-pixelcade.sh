@@ -6,37 +6,36 @@
 # $3 = The name of the game associated to the rom file in ES
 # $4 = Reason for the event to be fired from ES
 #		input         - game selected via the UI
-#		novideo	      - screensaver, black or dim
 #		randomvideo   - video being played
 #		requestedgame - game selected on startup or reload * game-select only 
 #		slideshow     - slideshow
 #
-# If no game was selected, first three parameters will be text "NULL"
-#
-
-#
-# Convert test "NULL" to empty string
-#
-if [  "$1" == "NULL" ] && [  "$2" == "NULL" ] && [ "$3" == "NULL" ]; then
-	set "" "" "" "$4"
-fi
 
 # BASE URL for RESTful calls to Pixelcade
 PIXELCADEBASEURL="http://localhost:8080/"
 # name of the file that stores the last marquee selected
-PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
+PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.marquee-select"
 # get the last previously selected game for the marquee
 PREVIOUSGAMESELECTED=$(cat "$PREVIOUSGAMESELECTEDFILE" 2>/dev/null)
-
 # file to load and save the last marquee displayed to prevent blinking
-PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
 PIXELCADESETTINGSFILE="/home/pi/pixelcade/settings.ini"
 PIXELCADEMAPPINGSFILE="/home/pi/pixelcade/console.csv"
 
+#
+# Key lookup function
+#
+function readINIFile() {
+    if [[ -f "$1" ]] ; then
+        sed -nr "/^\[$2\]/ { :l /^$3[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$1" 2>/dev/null
+    else
+        echo ""
+    fi
+}
+
 # Setting to override default behavior of the pixelcade listener. 1 - Use the system marquee if a game's marquee does not exist, 0 - Display text of the game name is a game's marquee does not exist
-CONVERTWHEELARTFORMARQUEE=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^ConvertWheelArtForMarquee[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
-USECONSOLEMARQUEEBYDEFAULT=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^UseConsoleMarqueeByDefault[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
-USECONSOLEMARQUEEFORSCREENSAVER=$(sed -nr "/^\[PIXELCADE SETTINGS\]/ { :l /^UseConsoleMarqueeForScreenSaver[ ]*=/ { s/.*=[ ]*//; p; q;}; n; b l;}" "$PIXELCADESETTINGSFILE" 2>/dev/null)
+CONVERTWHEELARTFORMARQUEE=$(readINIFile "$PIXELCADESETTINGSFILE" "PIXELCADE SETTINGS" "ConvertWheelArtForMarquee")
+USECONSOLEMARQUEEBYDEFAULT=$(readINIFile "$PIXELCADESETTINGSFILE" "PIXELCADE SETTINGS" "UseConsoleMarqueeByDefault")
+USECONSOLEMARQUEEFORSCREENSAVER=$(readINIFile "$PIXELCADESETTINGSFILE" "PIXELCADE SETTINGS" "UseConsoleMarqueeForScreenSaver")
 
 if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
 	# Function to check if an image file for a game exists. 0 = true.

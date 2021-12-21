@@ -18,7 +18,7 @@
 #
 SYSTEM=$(basename $(dirname "$1"))
 if [ "$SYSTEM" != "retropiemenu" ]; then #ignore the options menu
-	PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.game-select"
+	PREVIOUSGAMESELECTEDFILE="/home/pi/pixelcade/.marquee-select"
 	PREVIOUSGAMESELECTED=$(cat "$PREVIOUSGAMESELECTEDFILE" 2>/dev/null)
 	echo "curl --silent "http://localhost:8080/console/stream/nowloading"  > /dev/null 2>/dev/null" > /home/pi/pixelcade/.game-start.sh
 	echo "sleep 11s" >> /home/pi/pixelcade/.game-start.sh
