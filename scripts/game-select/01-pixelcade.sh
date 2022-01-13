@@ -32,6 +32,26 @@ function readINIFile() {
     fi
 }
 
+#
+# this is needed for rom names with non-html compatible characters
+#
+function rawurlencode() {
+  local string="${1}"
+  local strlen=${#string}
+  local encoded=""
+  local pos c o
+
+  for (( pos=0 ; pos<strlen ; pos++ )); do
+     c=${string:$pos:1}
+     case "$c" in
+        [-_.~a-zA-Z0-9] ) o="${c}" ;;
+        * )               printf -v o '%%%02x' "'$c"
+     esac
+     encoded+="${o}"
+  done
+  echo "${encoded}"
+}
+
 # Setting to override default behavior of the pixelcade listener. 1 - Use the system marquee if a game's marquee does not exist, 0 - Display text of the game name is a game's marquee does not exist
 CONVERTWHEELARTFORMARQUEE=$(readINIFile "$PIXELCADESETTINGSFILE" "PIXELCADE SETTINGS" "ConvertWheelArtForMarquee")
 USECONSOLEMARQUEEBYDEFAULT=$(readINIFile "$PIXELCADESETTINGSFILE" "PIXELCADE SETTINGS" "UseConsoleMarqueeByDefault")
@@ -78,8 +98,8 @@ if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
 		if [ "$CURRENTGAMESELECTED" == "console/$SYSTEM/default" ]; then
 			PIXELCADEURL="console/stream/"$SYSTEM""                                            # Show the marquee of the system console
 		else
-        		URLENCODED_FILENAME="$(python -c "import urllib, sys; print urllib.quote(sys.argv[1])" "$2")"
-	        	URLENCODED_NAME="$(python -c "import urllib, sys; print urllib.quote(sys.argv[1])" "$3")"
+        		URLENCODED_FILENAME="$(rawurlencode "$2")"
+	        	URLENCODED_NAME="$(rawurlencode "$3")"
 			PIXELCADEURL="arcade/stream/"$SYSTEM"/"$URLENCODED_FILENAME"?t="$URLENCODED_NAME"" # show the marquee of the game
 		fi
 	fi
