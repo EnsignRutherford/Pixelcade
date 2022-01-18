@@ -2,7 +2,7 @@
 
 #
 # $1 = The system identifier from ES
-# $2 = The name of the rom file
+# $2 = The fully qualified name of the rom file
 # $3 = The name of the game associated to the rom file in ES
 # $4 = Reason for the event to be fired from ES
 #		input         - game selected via the UI
@@ -69,22 +69,28 @@ if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
 		SYSTEM="$1"
 	fi
 
+        #
+        # Get rom name from fully qualified path
+        #
+	ROMNAME=$(basename "$2")
+	ROMNAME=${ROMNAME%.*}
+
 	#
 	# CURRENTGAMESELECTED is our hash used to check if the last requested marquee is being displayed and if so don't refresh it.
 	# The only time there will be a blink is if two games or systems have the same marquee one after the other.
 	#
 	SYSTEM="$1"
-	CURRENTGAMESELECTED="$1/$2/$3"
+	CURRENTGAMESELECTED="$1/$ROMNAME/$3"
 
 	# If there is no image available for the current system and game check to see if it's in a collection and use that name as the new system name.
 	# This only works if the ES option "SHOW SYSTEM NAME IN COLLECTIONS" is enabled.  If not, this will default to the collection marquee, if it exists.
 	# For example, 'Alien [ATARI2600]' would be the name of the game in the collection, so try to get that text, if it exists.
-	MARQUEE="/home/pi/pixelcade/$SYSTEM/${2%.*}"
+	MARQUEE="/home/pi/pixelcade/$SYSTEM/$ROMNAME"
 	if [ "$(image_file_exists "$MARQUEE")" != "0" ]; then
 		COLLECTIONSYSTEM=$(echo "$3" | sed 's/.*\[\([^]]*\)\].*/\1/g' )
 		if [ "$3" != "$COLLECTIONSYSTEM" ]; then
 			SYSTEM=${COLLECTIONSYSTEM,,} # Convert to lowercase and assign as the new target system
-			MARQUEE="/home/pi/pixelcade/$SYSTEM/${2%.*}"
+			MARQUEE="/home/pi/pixelcade/$SYSTEM/$ROMNAME"
 		fi
 	fi
 
@@ -98,7 +104,7 @@ if [ "$1" != "" ] && [ "$2" != "" ] && [ "$3" != "" ]; then
 		if [ "$CURRENTGAMESELECTED" == "console/$SYSTEM/default" ]; then
 			PIXELCADEURL="console/stream/"$SYSTEM""                                            # Show the marquee of the system console
 		else
-        		URLENCODED_FILENAME="$(rawurlencode "$2")"
+        		URLENCODED_FILENAME="$(rawurlencode "$ROMNAME")"
 	        	URLENCODED_NAME="$(rawurlencode "$3")"
 			PIXELCADEURL="arcade/stream/"$SYSTEM"/"$URLENCODED_FILENAME"?t="$URLENCODED_NAME"" # show the marquee of the game
 		fi
